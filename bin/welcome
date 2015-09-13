@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+########################################################################
+# 2015-08-02 Lukas Bestle mail@lukasbestle.com
+########################################################################
+# Prints a login welcome message with status information and ASCII art
+# This tool relies on a modular information provider setup in ~/.welcome
+# See README for detailed information
+#
+# Usage: welcome
+########################################################################
+
+# Define indentation
+indentation='	'
+
+# -----------------------------------------
+# Check for availability of files and tools
+
+if ! command -v figlet &> /dev/null; then
+	echo -e "\033[34mfiglet\033[31m is not available in your \033[34mPATH\033[31m.\033[0m"
+	echo -e "\033[31mPlease install \033[34mfiglet\033[31m for ASCII art generation before using this tool.\033[0m"
+	echo
+	echo -e "\033[31mWelcome anyway. :)\033[0m"
+	exit 1
+fi
+if [[ ! -d ~/.welcome ]]; then
+	echo -e "\033[34m~/.welcome\033[31m does not exist.\033[0m"
+	echo -e "\033[31mPlease follow the installation instructions in \033[34mREADME\033[31m.\033[0m"
+	echo
+	echo -e "\033[31mWelcome anyway. :)\033[0m"
+	exit 1
+fi
+if [[ ! -f ~/.welcome/colossal.flf ]]; then
+	echo -e "\033[34m~/.welcome/colossal.flf\033[31m does not exist.\033[0m"
+	echo -e "\033[31mPlease follow the installation instructions in \033[34mREADME\033[31m.\033[0m"
+	echo
+	echo -e "\033[31mWelcome anyway. :)\033[0m"
+	exit 1
+fi
+
+# --------------------
+# Define output buffer
+
+output=""
+function echoPrepare() {
+	if [[ "$1" == "-n" ]]; then
+		output+="$2"
+	else
+		output+="$1\n"
+	fi
+}
+
+# ----------------
+# Create ASCII art
+
+# Strip domain from hostname
+computerName=${HOSTNAME%%.*}
+
+# Generate ASCII art and indent every line of it
+ascii=$(figlet -k -f ~/.welcome/colossal.flf -w 150 "$USER@$computerName")
+asciiIndented=$(echo "$ascii" | sed "s/^/$indentation/")
+
+# Generate user and hostname string (colored for output, uncolored for length determination)
+userAndHostname="$USER@$computerName ($HOSTNAME)"
+userAndHostnameColored="\033[1;32m$USER\033[0m@\033[36m$computerName\033[0m (\033[36m$HOSTNAME\033[0m)"
+
+# Center user and hostname string
+
+	# Get the first line of the ASCII art, determine its length, remove 1 (trailing newline)
+	asciiFirstline=$(echo "$ascii" | head -1)
+	asciiLength=$(( ${#asciiFirstline} - 1 ))
+
+	# Get the length of the unformatted user and hostname string
+	userAndHostnameLength=${#userAndHostname}
+	
+	# Calculate the space padding on the left to center the string
+	userAndHostnameCenterPaddingLength=$(( ($asciiLength - $userAndHostnameLength) / 2 ))
+	
+	# Put it together
+	userAndHostnameCentered="\033[${userAndHostnameCenterPaddingLength}C$userAndHostnameColored"
+
+# Build output string
+echoPrepare "\033[1;38m"
+echoPrepare
+echoPrepare "$asciiIndented"
+echoPrepare "\033[0m"
+echoPrepare "\033[3A" # Go 3 lines up
+echoPrepare "$indentation$userAndHostnameCentered"
+
+# --------------------
+# Load env summarizers
+
+if ls ~/.welcome/summarizers/*.sh &> /dev/null; then
+	echoPrepare
+	
+	# Store for summarizers
+	maxLength=0
+	declare -a summarizers
+	declare -A summarizerFunctions
+	
+	# Define registration function
+	function registerSummarizer() {
+		label="$1"
+		function="$2"
+		
+		# Check if all parameters are valid
+		if [[ -z "$label" ]] || [[ -z "$function" ]] || ! declare -f "$function" &> /dev/null; then
+			echo -e "\033[31mInvalid summarizer.\033[0m"
+			return 1
+		fi
+		
+		# Store longest label
+		labelLength=${#label}
+		if [[ $labelLength -gt $maxLength ]]; then
+			maxLength=$labelLength
+		fi
+		
+		# Store summarizer
+		summarizers+=("$label")
+		summarizerFunctions["$label"]="$function"
+	}
+	
+	# Load the summarizer files and let them register themselves
+	for summarizer in ~/.welcome/summarizers/*.sh; do
+		# Check if the file is executable (security check)
+		if [[ ! -x "$summarizer" ]]; then
+			continue
+		fi
+		
+		source "$summarizer"
+	done
+	
+	# Generate padding after newlines
+	totalPadding="$(head -c $(( $maxLength + 2 )) < /dev/zero | tr '\0' ' ')"
+	
+	# Run the summarizers and generate output
+	for label in "${summarizers[@]}"; do
+		# Calculate needed padding after the given label
+		paddingLength=$(( $maxLength - ${#label} + 1 ))
+		padding="$(head -c $paddingLength < /dev/zero | tr '\0' ' ')"
+		
+		# Run the summarizer and indent its output
+		# Only indent the second and every following line
+		summarizerOutput="$("${summarizerFunctions["$label"]}" | sed "2,\$s/^/$indentation$totalPadding/")"
+		
+		# Build output string
+		echoPrepare "$indentation\033[1;35m$label:\033[0m$padding$summarizerOutput\033[0m"
+	done
+fi
+
+# ------------
+# Load warners
+
+# Load the warner files
+for warner in ~/.welcome/warners/*; do
+	# Check if the file is executable (security check)
+	if [[ ! -x "$warner" ]]; then
+		continue
+	fi
+	
+	# Run the warner and indent its output
+	warnerOutput="$("$warner" | sed "s/^/$indentation/")"
+	
+	# Output only if the result is not empty
+	if [[ -n "$warnerOutput" ]]; then
+		echoPrepare
+		echoPrepare "$warnerOutput"
+	fi
+done
+
+# -------------
+# Create footer
+
+echoPrepare
+echoPrepare "$indentation\033[1;38mHave a nice day, \033[32m$USER\033[0;1;38m!\033[0m"
+echoPrepare
+
+# --------------------------------
+# Finally print everything at once
+
+echo -ne "$output"
