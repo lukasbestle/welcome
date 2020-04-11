@@ -4,13 +4,21 @@
 ########################################################################
 # Prints a login welcome message with status information and ASCII art
 # This tool relies on a modular information provider setup in ~/.welcome
-# See README for detailed information
+# or $XDG_CONFIG_HOME/welcome; see README for detailed information
 #
 # Usage: welcome
 ########################################################################
 
 # Define indentation
 indentation='	'
+
+# Detect configuration path
+configPath=${XDG_CONFIG_HOME:-$HOME/.config}
+if [[ -d "$configPath/welcome" ]]; then
+	configPath="$configPath/welcome"
+else
+	configPath="$HOME/.welcome"
+fi
 
 # -----------------------------------------
 # Check for availability of files and tools
@@ -22,15 +30,15 @@ if ! command -v figlet &> /dev/null; then
 	echo -e "\033[31mWelcome anyway. :)\033[0m"
 	exit 1
 fi
-if [[ ! -d ~/.welcome ]]; then
-	echo -e "\033[34m~/.welcome\033[31m does not exist.\033[0m"
+if [[ ! -d "$configPath" ]]; then
+	echo -e "\033[31mCould not find configuration directory.\033[0m"
 	echo -e "\033[31mPlease follow the installation instructions in \033[34mREADME\033[31m.\033[0m"
 	echo
 	echo -e "\033[31mWelcome anyway. :)\033[0m"
 	exit 1
 fi
-if [[ ! -f ~/.welcome/colossal.flf ]]; then
-	echo -e "\033[34m~/.welcome/colossal.flf\033[31m does not exist.\033[0m"
+if [[ ! -f "$configPath/colossal.flf" ]]; then
+	echo -e "\033[34m$configPath/colossal.flf\033[31m does not exist.\033[0m"
 	echo -e "\033[31mPlease follow the installation instructions in \033[34mREADME\033[31m.\033[0m"
 	echo
 	echo -e "\033[31mWelcome anyway. :)\033[0m"
@@ -56,7 +64,7 @@ function echoPrepare() {
 computerName=${HOSTNAME%%.*}
 
 # Generate ASCII art and indent every line of it
-ascii=$(figlet -k -f ~/.welcome/colossal.flf -w 150 "$USER@$computerName")
+ascii=$(figlet -k -f "$configPath/colossal.flf" -w 150 "$USER@$computerName")
 asciiIndented=$(echo "$ascii" | sed "s/^/$indentation/")
 
 # Generate user and hostname string (colored for output, uncolored for length determination)
@@ -89,7 +97,7 @@ echoPrepare "$indentation$userAndHostnameCentered"
 # --------------------
 # Load env summarizers
 
-if ls ~/.welcome/summarizers/*.sh &> /dev/null; then
+if ls "$configPath/summarizers/"*.sh &> /dev/null; then
 	echoPrepare
 	
 	# Store for summarizers
@@ -120,7 +128,7 @@ if ls ~/.welcome/summarizers/*.sh &> /dev/null; then
 	}
 	
 	# Load the summarizer files and let them register themselves
-	for summarizer in ~/.welcome/summarizers/*.sh; do
+	for summarizer in "$configPath/summarizers/"*.sh; do
 		# Check if the file is executable (security check)
 		if [[ ! -x "$summarizer" ]]; then
 			continue
@@ -151,7 +159,7 @@ fi
 # Load warners
 
 # Load the warner files
-for warner in ~/.welcome/warners/*; do
+for warner in "$configPath/warners/"*; do
 	# Check if the file is executable (security check)
 	if [[ ! -x "$warner" ]]; then
 		continue

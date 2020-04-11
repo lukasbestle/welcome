@@ -20,6 +20,10 @@ The information below the fancy dynamic ASCII art comes from a modular informati
 
 The `welcome` script from the `bin` directory can be installed anywhere in your `$PATH`. `~/bin` makes sense, but it can be any directory.
 
+### Setup a configuration directory
+
+The configuration of `welcome` can either be stored in `~/.welcome` or in `$XDG_CONFIG_HOME/welcome` (which defaults to `~/.config/welcome`). Please create this directory and place all files from the following steps into it.
+
 ### Install figlet, a dependency of welcome
 
 [figlet](http://www.figlet.org) is a command line tool to generate fancy ASCII art from text and is a required depencency of welcome.
@@ -29,7 +33,7 @@ The `welcome` script from the `bin` directory can be installed anywhere in your 
 	toast arm ftp://ftp.figlet.org/pub/figlet/program/unix/figlet-2.2.5.tar.gz
 	```
 
-2. Get colossal, a figlet ASCII font that looks great but is not included by default: Download the file [colossal.flf](http://www.figlet.org/fonts/colossal.flf) from the figlet website and place it in `~/.welcome/colossal.flf`.
+2. Get colossal, a figlet ASCII font that looks great but is not included by default: Download the file [colossal.flf](http://www.figlet.org/fonts/colossal.flf) from the figlet website and place it in `.welcome/colossal.flf`.
 
 ### Create your own information providers
 
@@ -39,7 +43,7 @@ The reason welcome is so flexible is the modular information provider system. Th
 
 A summarizer is a function that returns one or more lines of text. Summarizers are expected to always output information and are therefore useful for information like the current date, the system uptime etc.
 
-You can place as many summarizers as you need in `~/.welcome/summarizers`. Each summarizer is a shell script with a specific structure:
+You can place as many summarizers as you need in `.welcome/summarizers`. Each summarizer is a shell script with a specific structure:
 
 ```bash
 function helloWorldSummarizer() {
@@ -54,17 +58,17 @@ This summarizer will output a simple `Hello: World`.
 
 The order of the summarizers gets defined by the order in the file system. So to force a specific order, simply prepend numbers, like so: `01-helloworld.sh`.
 
-**There is one thing you need to do before this can work: Your summarizers must actually be executable files to make sure only files you wanted to run are run, so please set `chmod +x ~/.welcome/summarizers/*`**.
+**There is one thing you need to do before this can work: Your summarizers must actually be executable files to make sure only files you wanted to run are run, so please set `chmod +x .welcome/summarizers/*`**.
 
 #### Warners
 
 Warners are the second kind of information provider. The difference to summarizers is that a warner does not have to output anything. They are useful for information that is only relevant in specific situations (for example when a package update is available like in the screenshot above).
 
-You can place as many warners as you need in `~/.welcome/warners`. Warners are arbitrary binaries that simply output text.
+You can place as many warners as you need in `.welcome/warners`. Warners are arbitrary binaries that simply output text.
 
 The order of the warners also gets defined by the order in the file system. So to force a specific order, simply prepend numbers, like so: `01-helloworld.sh`.
 
-**Same here: Please set `chmod +x ~/.welcome/warners/*` to make sure only files you wanted to run are run**.
+**Same here: Please set `chmod +x .welcome/warners/*` to make sure only files you wanted to run are run**.
 
 #### Examples
 
